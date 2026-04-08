@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "benchmark": "tsx scripts/benchmark.ts",
     "start": "node dist/server.js",
     "test": "node --test --import tsx test/**/*.test.ts"
   },

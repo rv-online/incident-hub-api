@@ -101,3 +101,39 @@ test("resolves incidents", async () => {
   assert.equal((resolved.payload as any).data.status, "resolved");
   assert.ok((resolved.payload as any).data.resolvedAt);
 });
+
+test("adds notes and exposes an incident timeline", async () => {
+  invoke.store = new IncidentStore();
+  const created = await invoke("POST", "/incidents", {
+    title: "Deploy failed",
+    service: "platform",
+    severity: "high",
+  });
+  const id = (created.payload as any).data.id;
+
+  const note = await invoke("POST", `/incidents/${id}/notes`, {
+    body: "Root cause appears to be a bad config rollout.",
+    author: "on-call",
+  });
+  const timeline = await invoke("GET", `/incidents/${id}/timeline`);
+
+  assert.equal(note.status, 201);
+  assert.equal((note.payload as any).data.author, "on-call");
+  assert.equal((timeline.payload as any).data.length, 2);
+  assert.equal((timeline.payload as any).data[1].type, "note_added");
+});
+
+test("bulk creates incidents and prioritizes triage output", async () => {
+  invoke.store = new IncidentStore();
+  const bulk = await invoke("POST", "/incidents/bulk", {
+    incidents: [
+      { title: "Search regression", service: "search-api", severity: "high", owner: "unassigned" },
+      { title: "Billing delay", service: "billing-worker", severity: "medium", owner: "payments" },
+    ],
+  });
+  const triage = await invoke("GET", "/incidents/triage");
+
+  assert.equal((bulk.payload as any).data.created.length, 2);
+  assert.equal((triage.payload as any).data[0].incident.service, "search-api");
+  assert.ok((triage.payload as any).data[0].score > (triage.payload as any).data[1].score);
+});

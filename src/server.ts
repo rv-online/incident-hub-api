@@ -33,6 +33,10 @@ export function createApp(store = new IncidentStore()) {
       return sendJson(response, 200, { data: store.summary() });
     }
 
+    if (method === "GET" && url.pathname === "/incidents/triage") {
+      return sendJson(response, 200, { data: store.triage() });
+    }
+
     if (method === "GET" && url.pathname === "/incidents") {
       const filters = {
         status: queryValue(url, "status") as IncidentStatus | undefined,
@@ -51,6 +55,16 @@ export function createApp(store = new IncidentStore()) {
       return sendJson(response, 201, { data: incident });
     }
 
+    if (method === "POST" && url.pathname === "/incidents/bulk") {
+      const payload = (await readBody(request)) as { incidents?: IncidentInput[] };
+      const incidents = Array.isArray(payload.incidents) ? payload.incidents : [];
+      if (incidents.length === 0) {
+        return sendJson(response, 400, { error: "incidents array is required" });
+      }
+      const created = incidents.map((item) => store.create(item));
+      return sendJson(response, 201, { data: { created } });
+    }
+
     if (method === "PATCH" && url.pathname.startsWith("/incidents/") && url.pathname.endsWith("/ack")) {
       const id = url.pathname.replace("/incidents/", "").replace("/ack", "");
       const incident = store.acknowledge(id.replaceAll("/", ""));
@@ -67,6 +81,24 @@ export function createApp(store = new IncidentStore()) {
         return sendJson(response, 404, { error: "incident not found" });
       }
       return sendJson(response, 200, { data: incident });
+    }
+
+    if (method === "POST" && url.pathname.startsWith("/incidents/") && url.pathname.endsWith("/notes")) {
+      const id = url.pathname.replace("/incidents/", "").replace("/notes", "");
+      const payload = (await readBody(request)) as { body?: string; author?: string };
+      if (!payload.body || !payload.body.trim()) {
+        return sendJson(response, 400, { error: "body is required" });
+      }
+      const note = store.addNote(id.replaceAll("/", ""), { body: payload.body, author: payload.author });
+      if (!note) {
+        return sendJson(response, 404, { error: "incident not found" });
+      }
+      return sendJson(response, 201, { data: note });
+    }
+
+    if (method === "GET" && url.pathname.startsWith("/incidents/") && url.pathname.endsWith("/timeline")) {
+      const id = url.pathname.replace("/incidents/", "").replace("/timeline", "");
+      return sendJson(response, 200, { data: store.timeline(id.replaceAll("/", "")) });
     }
 
     return sendJson(response, 404, { error: "route not found" });
