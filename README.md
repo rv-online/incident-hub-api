@@ -1,16 +1,24 @@
 # Incident Hub API
 
-TypeScript backend project that exposes a small incident-management API over Node's built-in HTTP server. It focuses on service design fundamentals:
+TypeScript incident-management API with idempotent writes, filterable reads, lifecycle transitions, and summary metrics.
 
-- idempotent writes
-- predictable JSON responses
-- domain isolation from transport
-- filterable list and summary views
-- multi-step incident lifecycle
-- no framework magic
-- built-in test coverage
+## Why This Exists
 
-## Scripts
+This repo is positioned like an internal reliability service rather than a tutorial CRUD app, with operational behavior that looks familiar to platform teams.
+
+## What This Demonstrates
+
+- idempotent incident creation and predictable JSON responses
+- filterable list endpoints plus summary metrics for operations views
+- acknowledge and resolve lifecycle transitions with deterministic tests
+
+## Architecture
+
+1. HTTP handlers translate requests into domain operations
+1. incident state is modeled explicitly with lifecycle transitions
+1. tests validate business behavior rather than snapshots or framework internals
+
+## Run It
 
 ```bash
 npm test
@@ -18,15 +26,6 @@ npm run build
 npm start
 ```
 
-## Endpoints
+## Verification
 
-- `GET /health`
-- `GET /incidents`
-- `GET /incidents/summary`
-- `POST /incidents`
-- `PATCH /incidents/:id/ack`
-- `PATCH /incidents/:id/resolve`
-
-## Why It Matters
-
-This repo reads more like an internal platform service than a toy CRUD app: lifecycle state transitions, idempotency, filterable query behavior, operational summary metrics, and tests that verify business rules instead of snapshots.
+Run `npm test` and `npm run build` to validate lifecycle behavior and compile health.
