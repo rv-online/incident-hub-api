@@ -5,6 +5,8 @@ TypeScript backend project that exposes a small incident-management API over Nod
 - idempotent writes
 - predictable JSON responses
 - domain isolation from transport
+- filterable list and summary views
+- multi-step incident lifecycle
 - no framework magic
 - built-in test coverage
 
@@ -20,9 +22,11 @@ npm start
 
 - `GET /health`
 - `GET /incidents`
+- `GET /incidents/summary`
 - `POST /incidents`
 - `PATCH /incidents/:id/ack`
+- `PATCH /incidents/:id/resolve`
 
 ## Why It Matters
 
-This repo reads like a backend engineer built it intentionally: clear domain model, deterministic behavior, and tests that verify business rules instead of snapshots.
+This repo reads more like an internal platform service than a toy CRUD app: lifecycle state transitions, idempotency, filterable query behavior, operational summary metrics, and tests that verify business rules instead of snapshots.

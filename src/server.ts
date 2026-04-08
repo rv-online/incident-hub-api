@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { pathToFileURL } from "node:url";
-import { IncidentStore, type IncidentInput } from "./domain.js";
+import { IncidentStore, type IncidentInput, type IncidentStatus, type Severity } from "./domain.js";
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
   response.writeHead(statusCode, { "content-type": "application/json" });
@@ -15,6 +15,11 @@ async function readBody(request: IncomingMessage): Promise<unknown> {
   return chunks.length === 0 ? {} : JSON.parse(Buffer.concat(chunks).toString("utf-8"));
 }
 
+function queryValue(url: URL, key: string): string | undefined {
+  const value = url.searchParams.get(key);
+  return value ? value : undefined;
+}
+
 export function createApp(store = new IncidentStore()) {
   return async (request: IncomingMessage, response: ServerResponse) => {
     const method = request.method ?? "GET";
@@ -24,8 +29,17 @@ export function createApp(store = new IncidentStore()) {
       return sendJson(response, 200, { ok: true });
     }
 
+    if (method === "GET" && url.pathname === "/incidents/summary") {
+      return sendJson(response, 200, { data: store.summary() });
+    }
+
     if (method === "GET" && url.pathname === "/incidents") {
-      return sendJson(response, 200, { data: store.list() });
+      const filters = {
+        status: queryValue(url, "status") as IncidentStatus | undefined,
+        service: queryValue(url, "service"),
+        severity: queryValue(url, "severity") as Severity | undefined,
+      };
+      return sendJson(response, 200, { data: store.list(filters) });
     }
 
     if (method === "POST" && url.pathname === "/incidents") {
@@ -40,6 +54,15 @@ export function createApp(store = new IncidentStore()) {
     if (method === "PATCH" && url.pathname.startsWith("/incidents/") && url.pathname.endsWith("/ack")) {
       const id = url.pathname.replace("/incidents/", "").replace("/ack", "");
       const incident = store.acknowledge(id.replaceAll("/", ""));
+      if (!incident) {
+        return sendJson(response, 404, { error: "incident not found" });
+      }
+      return sendJson(response, 200, { data: incident });
+    }
+
+    if (method === "PATCH" && url.pathname.startsWith("/incidents/") && url.pathname.endsWith("/resolve")) {
+      const id = url.pathname.replace("/incidents/", "").replace("/resolve", "");
+      const incident = store.resolve(id.replaceAll("/", ""));
       if (!incident) {
         return sendJson(response, 404, { error: "incident not found" });
       }
